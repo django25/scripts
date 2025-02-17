@@ -3,9 +3,9 @@
 SONAR_VERSION=https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-25.2.0.102705.zip
 PLUGIN_VERSION=https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/1.23.0/sonarqube-community-branch-plugin-1.23.0.jar
 PLUGIN_VERSION_NUM=1.23.0
-DB_USER=sonar
-DB_PASS=sonarqube
-DB_NAME=sonarqube
+DB_USER= {DB_USER}
+DB_PASS= {DB_PASS}
+DB_NAME= {DB_NAME}
 
 # Actualizar el sistema
 echo "Actualizando el sistema..."
@@ -34,7 +34,7 @@ if systemctl is-active --quiet postgresql; then
     echo "✅ PostgreSQL está corriendo."
 else
     echo "❌ ERROR: PostgreSQL no se inició correctamente."
-    exit 1  # Detener el script si PostgreSQL no está corriendo
+    exit 1  
 fi
 
 # Mostrar el estado y la versión de PostgreSQL
@@ -96,22 +96,19 @@ if ! grep -Fxq "RUN_AS_USER=sonarqube" /opt/sonarqube/bin/linux-x86-64/sonar.sh
 then
     # Si no existe, agregar la línea en la segunda fila
     sed -i '2i RUN_AS_USER=sonarqube' /opt/sonarqube/bin/linux-x86-64/sonar.sh
-    echo "Línea agregada al archivo sonar.sh."
+    echo "Se agrega usuario al sonar.sh"
 else
-    echo "La línea RUN_AS_USER=sonarqube ya existe en el archivo."
+    echo "El Usuario ya existe en el archivo"
 fi
 
-# # Editar script de inicio de SonarQube
-# sed -i '2i RUN_AS_USER=sonarqube' /opt/sonarqube/bin/linux-x86-64/sonar.sh   
+# Configurar el servicio de SonarQube
 
 FILE="/etc/systemd/system/sonar.service"
-
 # Si el archivo existe, eliminarlo
 if [ -f "$FILE" ]; then
     echo "Eliminando archivo existente: $FILE"
     sudo rm "$FILE"
 fi
-
 # Crear un nuevo archivo con el contenido deseado
 echo "Creando nuevo archivo: $FILE"
 sudo tee "$FILE" > /dev/null <<EOF
@@ -133,6 +130,8 @@ LimitNPROC=4096
 WantedBy=multi-user.target
 EOF
 
+#Configurar recursos del sistema para la tarea de Sonarqube
+
 CONFIG_FILE="/etc/sysctl.conf"
 # Definir las líneas que queremos agregar
 CONFIG_LINES=(
@@ -141,7 +140,6 @@ CONFIG_LINES=(
         "ulimit -n 65536"
         "ulimit -u 4096"
 )
-
 # Recorrer cada línea y verificar si ya existe antes de agregarla
 for LINE in "${CONFIG_LINES[@]}"; do
     if ! grep -qF "$LINE" "$CONFIG_FILE"; then
@@ -149,17 +147,12 @@ for LINE in "${CONFIG_LINES[@]}"; do
     fi
 done
 
-
-
 #Recargar systemd para aplicar cambios
 sudo systemctl daemon-reload
-
 #Habilitar el servicio para que inicie automáticamente
 sudo systemctl enable sonar.service
-
 #Iniciar el servicio
 sudo systemctl start sonar.service
-
 #Verificar el estado del servicio
 sudo systemctl status sonar.service
 
